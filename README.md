@@ -8,7 +8,7 @@ Details about the game
 - If you bomb some place and it misses there will appear a picture that you missed.
 
 - 1.	There are two different versions: regular and mobile:
--  a.	Both versions use the same source code
+- -  a.	Both versions use the same source code
 -  b.	The mobile version has these features:
 -    i.	Does not allow zooming in and only allows scrolling up and down, but not to right and left.
 -    ii.	In mobile, the board is almost from left edge to right edge.
