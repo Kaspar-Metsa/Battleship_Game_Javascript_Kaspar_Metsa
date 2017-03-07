@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BattleShip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+</head>
+<style type="text/css">
+    html, body{
+        padding: 0;
+        margin: 3px;
+        color: #333;
+        font-family: Arial, Helvetica;
+        text-align: center;
+    }
+    table{
+        margin: auto;
+        border-collapse: collapse;
+    }
+    table tr td{
+        padding: 15px;
+        border: 1px solid #ccc;
+    }
+    a{
+        text-decoration: none;
+    }
+    a:hover{
+        color: #f30;
+    }
+    #game_tables {
+        margin: auto;
+        text-align: center;
+        max-width: 800px;
+        display: none;
+    }
+
+    #game_tables #player,
+    #game_tables #computer{
+        width: 49%;
+        float: left;
+        min-width: 310px;
+    }
+    #game_tables #computer{
+        border-right: 1px solid #bbb;
+    }
+    #game_tables #computer table tr td{
+        cursor: pointer;
+    }
+    #note{
+        clear: both;
+        padding: 15px 0;
+        color: #f50;
+        font-size: 20px;
+    }
+    #start-over{
+        margin-bottom: 20px;
+    }
+    @media screen and (max-width: 620px) {
+        #game_tables #computer{
+            border-right: none;
+        }
+        #game_tables #player,
+        #game_tables #computer{
+            width: 100%;
+            float: left;
+            min-width: 310px;
+        }
+    }
+</style>
+<body>
+<h1>Battleship</h1>
+<div>
+    <div id="start">
+        <p>
+            <label>Choose a board size</label>
+            <select id="board_size">
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+        </p>
+        <p>
+            <label>Choose number of ships</label>
+            <select id="ships_number">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+            </select>
+        </p>
+        <p>
+            How do you want to place the ships?<br>
+            <label>Manually<input type="radio" value="manually" name="place_ships"></label>
+            <label>Randomly<input type="radio" value="randomly" name="place_ships" checked></label>
+        </p>
+        <input id="current_player_name" type="text" name="current_player_name" placeholder="Please enter your name here :">
+        <button id="start-game">Start Game</button>
+    </div><!-- /#start -->
+    <div id="start-over" style="display: none">
+        <button id="start-over">Start Over</button>
+    </div><!-- /#start-over -->
+    <div id="game_tables">
+        <div id="computer">
+            <h3>COMPUTER'S FLEET</h3>
+        </div>
+        <div id="player">
+            <h3>PLAYER'S FLEET</h3>
+        </div>
+        <div id="note"></div>
+    </div>
+</div>
+<div>
+<!--Siin läheb kohe kõigi 0-dega results.py faili-->
+</div>
+<script type="text/javascript">
+//    Focus laseb kohe kirjutada nimi kohe kui laeb
+    document.getElementById('current_player_name').focus();
+    //This game will take top-left as the root of axis
+    //Event listen to start button
+    var board_size, ships_number, player_ships = [], computer_ships = [], turn = 'left', playing = false,
+        player_hits = 0, computer_hits = 0, start_time, end_time;
+
+    var current_player_name = ''
+
+    document.getElementById('start-game').onclick = function(){
+        current_player_name = document.getElementById('current_player_name').value;
+        if(!current_player_name == ''){
+            document.getElementById('current_player_name').value = '';
+            start_game();
+        }else{
+            alert('Please enter your name first !');
+        }
+        document.getElementById('current_player_name').focus();
+    }
+    document.getElementById('start-over').onclick = function(){
+        start_over();
+        document.getElementById('current_player_name').focus();
+    }
+    document.getElementById('board_size').onchange = function(){
+        var size = Number(this.value);
+        var ships_number = document.getElementById('ships_number');
+        ships_number.innerHTML = '';
+        for (var i = 1; i < size; i++) {
+            var option = document.createElement('option');
+            option.setAttribute('value', i);
+            var text = document.createTextNode(i);
+            option.appendChild(text);
+            ships_number.appendChild(option);
+        };
+    }
+    function start_game(){
+        board_size = Number(document.getElementById('board_size').value),
+        ships_number = Number(document.getElementById('ships_number').value);
+        var place_ships = document.querySelector('input[name=place_ships]:checked');
+
+        var units, count_player_ship = 0;
+        //If valid input, draw the table
+        var computer_fleet = document.getElementById('computer');
+        var player_fleet = document.getElementById('player');
+        createTable(board_size, computer_fleet);
+        createTable(board_size, player_fleet);
+        //Hide start div
+        document.getElementById('start').style.display = 'none';
+        document.getElementById('start-over').style.display = 'block';
+        document.getElementById('game_tables').style.display = 'block';
+        //Generate ship
+        if (place_ships.value == 'randomly'){
+            player_ships  = randomShips(board_size, ships_number);
+            computer_ships  = randomShips(board_size, ships_number);
+            for (var i = 0; i < player_ships.length; i++) {
+                getGrid(player_fleet.querySelector('table'), player_ships[i][0][0], player_ships[i][0][1]).style.background = '#ddd';
+                getGrid(player_fleet.querySelector('table'), player_ships[i][1][0], player_ships[i][1][1]).style.background = '#ddd';
+            };
+            play();
+        }else{
+            document.getElementById('note').innerHTML = 'Click on PLAYER\'S FLEET grid to place your ships! You have '+ships_number+' ships.';
+            units = player_fleet.querySelector('table').querySelectorAll('tr td');
+            for (var i = 0; i < units.length; i++) {
+                units[i].onclick = function(){
+                    if (playing){
+                        return;
+                    }
+                    var x = Number(this.getAttribute('data-x'));
+                    var y = Number(this.getAttribute('data-y'));
+                    if (checkAvailability(player_ships, x, y)){
+                        player_ships.push([[x, y], [x+1, y]]);
+                        getGrid(player_fleet.querySelector('table'), x, y).style.background = '#ddd';
+                        getGrid(player_fleet.querySelector('table'), x+1, y).style.background = '#ddd';
+                        count_player_ship++;
+                    }else{
+                        alert('Wrong place! Ships may not touch each other by their side. Ships may touch each other by their corner. Pleae try again!');
+                    }
+                    if (count_player_ship == ships_number){
+                        computer_ships  = randomShips(board_size, ships_number);
+                        play();
+                    }
+                }
+            };
+        }
+    }
+    //Listen to event clicking on computer fleet
+    function eventListen(table){
+        var units = table.querySelectorAll('tr td');
+        for (var i = 0; i < units.length; i++) {
+            units[i].onclick = function(){
+                if (turn == 'left' && playing){
+                    shot(table, computer_ships, Number(this.getAttribute('data-x')), Number(this.getAttribute('data-y')));
+                }
+            }
+        };
+    }
+    //Play
+    function play(){
+        eventListen(document.querySelector('#computer table'));
+        document.querySelector('#computer h3').style.color = '#8AC007';
+        document.getElementById('note').innerHTML = 'Now playing... There are '+ships_number+' ships for each board.';
+        // Playing
+        playing = true;
+
+        function formatAMPM() {
+            var d = new Date(),
+
+//      Kui kellaaja minutid on ühekohalised siis panen 0 ette, muidu panen kõik minutid
+        minutes = d.getMinutes().toString().length == 1 ? '0'+d.getMinutes() : d.getMinutes(),
+//      Kui kellaaja tunnid on ühekohalised siis panen 0 ette, muidu panen kõik tunnid
+        hours = d.getHours().toString().length == 1 ? '0'+d.getHours() : d.getHours(),
+//      Kui kell 12:00-00:00 siis pm, muidu am
+        ampm = d.getHours() >= 12 ? 'pm' : 'am',
+        months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+//            getDay, getMonth, getDate, getFullYear on js funktsioonid mis tagastavad numbreid, mina valin numbritega arrayst üles
+            return days[d.getDay()]+' '+months[d.getMonth()]+' '+d.getDate()+' '+d.getFullYear()+' '+hours+':'+minutes+ampm;
+        }
+//The now() method returns the milliseconds elapsed since 1 January 1970 00:00:00 UTC up until now as a Number.
+        start_time = Date.now();
+        start_date = formatAMPM();
+    }
+    function start_over(){
+        player_ships = [], computer_ships = [], turn = 'left', playing = false, player_hits = 0, computer_hits = 0;
+        //Remove the Fleet
+        document.getElementById('computer').innerHTML = '<h3>COMPUTER\'S FLEET</h3>';
+        document.getElementById('player').innerHTML = '<h3>PLAYER\'S FLEET</h3>';
+        //Start again
+        document.getElementById('start-over').style.display = 'none';
+        document.getElementById('game_tables').style.display = 'none';
+        document.getElementById('start').style.display = 'block';
+    }
+
+    function createTable(size, fleet){
+        var table = document.createElement('table');
+        for (var i = 0; i < size; i++){
+            var tr = document.createElement('tr');
+
+            for (var j = 0; j < size; j++) {
+                var td = document.createElement('td');
+                td.setAttribute('data-x', j+1);
+                td.setAttribute('data-y', i+1);
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+        }
+        fleet.appendChild(table);
+    }
+
+    function randomShips(size, ships_number){
+        var count = 1, startX, startY, endX, endY, ships = [], testMatrix = [];
+        while (count <= ships_number){
+            if (testMatrix.length >= size*(size-1)){
+                return randomShips(size, ships_number);
+            }
+            //create a random ship
+            startX = Math.ceil(Math.random() * (size -1));
+            startY= Math.ceil(Math.random() * (size));
+
+            endX = startX + 1;
+            endY = startY;
+            if (!inArray([startX, startY], testMatrix) && checkAvailability(ships, startX, startY)){
+                testMatrix.push([startX, startY]);
+                if (endX < size){
+                    testMatrix.push([endX, endY]);
+                }
+                ships.push([[startX, startY], [endX, endY]]);
+                count++;
+            }else{
+                testMatrix.push([startX, startY]);
+                continue;
+            }
+        }
+        return ships;
+    }
+    //Check if an 1D array item is in an 2D array
+    function inArray(item, array){
+        for (var i = 0; i < array.length; i++) {
+            if (array[i][0] == item[0] && array[i][1] == item[1]){
+                return true;
+            }
+        };
+        return false;
+    }
+
+    function checkAvailability(ships, startX, startY){
+        if (startX == board_size){
+            return false;
+        }
+        for (var i = 0; i < ships.length; i++) {
+            if (
+                ( ships[i][0][1] == startY && startX >= ships[i][0][0] - 2 && startX <= ships[i][1][0] + 1 )
+                || ( (ships[i][0][1] - 1 == startY || ships[i][0][1] + 1 == startY) && startX >= ships[i][0][0]-1 && startX <= ships[i][1][0] )
+            )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    function shot(table, ships, x, y){
+        var target = table.querySelector('tr:nth-child('+y+') td:nth-child('+x+')'), has_ship = false, head_ship = false;
+        if (target.hasAttribute('hit')){
+            return;
+        }
+        for (var i = 0; i < ships.length; i++) {
+            for (var j = 0; j < ships[i].length; j++) {
+                if (ships[i][j][0] == x && ships[i][j][1] == y){
+                    has_ship = true;
+                    //Whether it shots the head of the ship or not
+                    if (j == 1){
+                        head_ship = true;
+                    }
+                    if (
+                        (target.previousSibling && target.previousSibling.hasAttribute('has-ship'))
+                        || (target.nextSibling && target.nextSibling.hasAttribute('has-ship'))
+                    ){
+                        ships.splice(i, 1);
+                    }
+                    break;
+                }
+            };
+            if (has_ship){
+                break;
+            }
+        };
+        target.setAttribute('hit', '1');
+        if (table.parentNode.id == 'computer'){
+            player_hits ++;
+        }else{
+            computer_hits ++;
+        }
+        if (has_ship){
+            if (head_ship){
+                target.style.background = 'url(img/head_ship.png) #66CCFF';
+            }else{
+                target.style.background = 'url(img/body_ship.png) #66CCFF';
+            }
+            target.setAttribute('has-ship', '1');
+            if (!ships.length){
+                if (table.parentNode.id == 'computer'){
+                    alert('You win!');
+                    end_game('Player');
+                }else{
+                    alert('Computer wins!');
+                    end_game('Computer');
+                }
+            }
+            return true;
+        }else{
+            target.style.background = '#66CCFF';
+            target.style.cursor = 'not-allowed';
+            changeSidePlay();
+            return false;
+        }
+    }
+
+    function changeSidePlay(){
+        if (turn == 'left'){
+            turn = 'right';
+        }else{
+            turn = 'left';
+        }
+        //If turn is right, then let computer shots, else do nothing
+        if (turn == 'right'){
+            document.querySelector('#player h3').style.color = '#8AC007';
+            document.querySelector('#computer h3').style.color = 'inherit';
+            computerPlay();
+        }else{
+            document.querySelector('#computer h3').style.color = '#8AC007';
+            document.querySelector('#player h3').style.color = 'inherit';
+        }
+    }
+
+    function computerPlay(){
+        setTimeout(function(){
+            var x, y, player_table, target, hit;
+            player_table = document.querySelector('#player table');
+
+            x = Math.ceil(Math.random() * board_size);
+            y = Math.ceil(Math.random() * board_size);
+            target = player_table.querySelector('tr:nth-child('+y+') td:nth-child('+x+')');
+            while(target.hasAttribute('hit')){
+                x = Math.ceil(Math.random() * board_size);
+                y = Math.ceil(Math.random() * board_size);
+                target = player_table.querySelector('tr:nth-child('+y+') td:nth-child('+x+')');
+                continue;
+            }
+            hit = shot(player_table, player_ships, x, y);
+
+            if (hit && playing){
+                computerPlay();
+            }
+        }, 150);
+    }
+    function getGrid(table,x,y){
+        return table.querySelector('tr:nth-child('+y+') td:nth-child('+x+')');
+    }
+    function end_game(winner){
+        if(winner == 'Player'){
+            winner = current_player_name;
+        }
+        document.getElementById('note').innerHTML = 'Game ends.[ '+winner+' ]wins!';
+        playing = false;
+        end_time = Date.now();
+
+
+//        window.location.href is not a method, it's a property that will tell you the current URL location of the browser. Changing the value of the property will redirect the page.
+        //This automatically goes to this url
+        window.location.href = 'http://dijkstra.cs.ttu.ee/~Kaspar.Metsa/prax3/index.html';
+
+    }
+</script>
+
+</body>
+</html>
