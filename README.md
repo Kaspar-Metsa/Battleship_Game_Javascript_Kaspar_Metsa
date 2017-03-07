@@ -2,7 +2,7 @@ This is a TTU university project completed by me - a battle ship game using only
 
 Please play the game here: http://dijkstra.cs.ttu.ee/~Kaspar.Metsa/prax3/index.html
 
-Requirements for the game from the client(ie the teacher)
+Requirements for the game
 ==============
 - The ships only take 2 places horizontally and can't be next to each other. Diagonal touching is ok.
 - If you bomb some place and it misses there will appear a picture that you missed.
